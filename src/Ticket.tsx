@@ -31,7 +31,7 @@ export default function Ticket({ id }: { id: string }) {
   }
 
   const base = `${window.location.origin}${window.location.pathname}`;
-  const payload = `${base}#/scan?code=${encodeURIComponent(booking.id)}`;
+  const payload = `${base}#/scan?code=${encodeURIComponent(booking.id)}&session=${encodeURIComponent(session.id)}`;
 
   return (
     <div className="min-h-screen bg-neutral-50" style={{ ["--brand" as any]: BRAND } as React.CSSProperties}>

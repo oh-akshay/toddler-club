@@ -23,9 +23,10 @@ export default function Scan() {
     if (qIndex !== -1) {
       const search = new URLSearchParams(hash.slice(qIndex + 1));
       const code = search.get("code");
+      const sessionId = search.get("session") || undefined;
       if (code) {
         setLastCode(code);
-        markAttended(code);
+        markAttended(code, sessionId);
       }
     }
   }, []);
@@ -117,12 +118,13 @@ export default function Scan() {
       try {
         const url = new URL(raw);
         const code = url.searchParams.get("code");
-        if (code) markAttended(code);
+        const sessionId = url.searchParams.get("session") || undefined;
+        if (code) markAttended(code, sessionId);
       } catch {}
     }
   }
 
-  function markAttended(bookingId: string) {
+  function markAttended(bookingId: string, sessionId?: string) {
     const list: Booking[] = JSON.parse(localStorage.getItem("bookings") || "[]");
     const idx = list.findIndex((b) => b.id === bookingId);
     if (idx >= 0) {
@@ -134,7 +136,17 @@ export default function Scan() {
         setStatus("already_marked");
       }
     } else {
-      setStatus("not_found");
+      if (sessionId) {
+        const now = new Date().toISOString();
+        const upserted = [...list, { id: bookingId, sessionId, createdAt: now, attendedAt: now }];
+        const bySession: Record<string, Booking> = {} as any;
+        upserted.forEach((b) => { bySession[b.sessionId] = bySession[b.sessionId] || b; });
+        const merged = Object.values(bySession);
+        localStorage.setItem("bookings", JSON.stringify(merged));
+        setStatus("marked");
+      } else {
+        setStatus("not_found");
+      }
     }
   }
 
@@ -163,9 +175,9 @@ export default function Scan() {
               {demoIds.map((d, idx) => (
                 <button key={d.bookingId} className="px-3 h-9 rounded-full bg-[var(--brand)] text-white text-sm" onClick={() => {
                   // Simulate scanning the same payload as ticket QR
-                  const payload = `openhouse:booking:${d.bookingId}`;
+                  const payload = `${window.location.origin}${window.location.pathname}#/scan?code=${encodeURIComponent(d.bookingId)}&session=${encodeURIComponent(d.sessionId)}`;
                   setLastCode(payload);
-                  markAttended(d.bookingId);
+                  markAttended(d.bookingId, d.sessionId);
                 }}>Scan Demo Ticket {idx+1}</button>
               ))}
             </div>
