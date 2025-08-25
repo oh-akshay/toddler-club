@@ -1,5 +1,5 @@
 import React from "react";
-import { BRAND } from "./data";
+import { BRAND, seedWeek } from "./data";
 
 type Booking = { id: string; sessionId: string; createdAt: string; attendedAt: string | null };
 
@@ -8,6 +8,11 @@ export default function Scan() {
   const [supported, setSupported] = React.useState<boolean | null>(null);
   const [lastCode, setLastCode] = React.useState<string | null>(null);
   const [status, setStatus] = React.useState<string>("idle");
+  const { sessions } = React.useMemo(seedWeek, []);
+  const demoIds = React.useMemo(() => {
+    const picks = sessions.slice(0, 2);
+    return picks.map((s, i) => ({ bookingId: `b:demo-${i + 1}`, sessionId: s.id }));
+  }, [sessions]);
 
   React.useEffect(() => {
     // Feature detection
@@ -100,6 +105,19 @@ export default function Scan() {
         <div className="mt-5 grid gap-4">
           <video ref={videoRef} className="w-full rounded-xl bg-black/80 aspect-[3/4] object-cover" muted playsInline />
           <div className="text-[13px] text-gray-600">Point the camera at the QR on the ticket.</div>
+          <div className="mt-2 p-3 rounded-lg bg-gray-50 border border-gray-200 text-[13px] text-gray-700">
+            One-device demo: tap a demo button to simulate a scan:
+            <div className="mt-2 flex gap-2 flex-wrap">
+              {demoIds.map((d, idx) => (
+                <button key={d.bookingId} className="px-3 h-9 rounded-full bg-[var(--brand)] text-white text-sm" onClick={() => {
+                  // Simulate scanning the same payload as ticket QR
+                  const payload = `openhouse:booking:${d.bookingId}`;
+                  setLastCode(payload);
+                  markAttended(d.bookingId);
+                }}>Scan Demo Ticket {idx+1}</button>
+              ))}
+            </div>
+          </div>
           {lastCode && (
             <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-[13px] text-gray-700">
               Last code: <span className="font-mono break-all">{lastCode}</span>
@@ -120,4 +138,3 @@ export default function Scan() {
     </div>
   );
 }
-

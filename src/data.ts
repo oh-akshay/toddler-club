@@ -14,6 +14,8 @@ export type Session = {
   friendIds: string[];
 };
 
+export type Booking = { id: string; sessionId: string; createdAt: string; attendedAt: string | null };
+
 export type Friend = { id: string; name: string; emoji?: string };
 export const FRIENDS: Friend[] = [
   { id: "aanya", name: "Aanya", emoji: "🦄" },
@@ -108,4 +110,3 @@ export function dayTitle(date: Date) {
 export function classNames(...xs: (string | false | undefined)[]) {
   return xs.filter(Boolean).join(" ");
 }
-
