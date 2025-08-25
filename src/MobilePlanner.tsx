@@ -1,128 +1,7 @@
 import React from "react";
+import { BRAND, ICONS, Session, seedWeek, dayTitle, timeLabel, classNames } from "./data";
 
-// ---- Simple, dependency‑free mobile site (React + Tailwind) ----
-// Notes
-// • Uses Tailwind utility classes for styling.
-// • No external UI libs so it runs anywhere.
-// • Brand color can be changed via CSS variable --brand (defaults to #EF5D34).
-// • Accessible buttons/labels, large touch targets, sticky weekday scroller,
-//   lightweight modal for details, local state for booking.
-
-const BRAND = "#EF5D34"; // Openhouse orange
-
-// Emoji fallback icons (can be swapped with SVGs later)
-const ICONS: Record<string, string> = {
-  "sensory play": "🖐️",
-  "movement & music": "💪",
-  language: "💬",
-  "logic play": "🧠",
-};
-
-// Session type
-type Session = {
-  id: string;
-  title: string;
-  start: string; // ISO time
-  end: string; // ISO time
-  durationMin: number;
-  slotsLeft: number; // 0 = sold out
-  dayKey: string; // yyyy-mm-dd
-  teacher: string; // assigned educator
-  friendIds: string[]; // friends attending (by id)
-};
-
-// Simple friend network (hardcoded)
-type Friend = { id: string; name: string; emoji?: string };
-const FRIENDS: Friend[] = [
-  { id: "aanya", name: "Aanya", emoji: "🦄" },
-  { id: "kabir", name: "Kabir", emoji: "🦖" },
-  { id: "maya", name: "Maya", emoji: "🦋" },
-  { id: "zoya", name: "Zoya", emoji: "🐼" },
-  { id: "arjun", name: "Arjun", emoji: "🦁" },
-  { id: "ira", name: "Ira", emoji: "🐨" },
-];
-
-const TEACHERS = ["Nithyashree", "Monia"] as const;
-
-// Deterministic string hash for stable pseudo-randomness
-function hashString(str: string) {
-  let h = 5381;
-  for (let i = 0; i < str.length; i++) {
-    h = (h << 5) + h + str.charCodeAt(i);
-    h |= 0; // 32-bit
-  }
-  return Math.abs(h);
-}
-
-// Seed data for one week (Mon–Sun)
-const seedWeek = () => {
-  // Starting Monday, 2025-08-25 to mirror the mockup
-  const start = new Date("2025-08-25T00:00:00");
-  const days: { key: string; date: Date }[] = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    const key = d.toISOString().slice(0, 10);
-    days.push({ key, date: d });
-  }
-
-  const S = (dayOffset: number, h: number, m: number, title: string, durationMin = 90, slotsLeft = 3): Session => {
-    const day = new Date(start);
-    day.setDate(start.getDate() + dayOffset);
-    const begin = new Date(day);
-    begin.setHours(h, m, 0, 0);
-    const end = new Date(begin.getTime() + durationMin * 60000);
-    const id = `${title}-${begin.toISOString()}`;
-    const teacher = TEACHERS[hashString(id) % TEACHERS.length];
-    // Choose a small set of friends deterministically
-    const chosen = FRIENDS.filter((f) => (hashString(id + f.id) % 5) < 2).slice(0, 3);
-    return {
-      id,
-      title,
-      start: begin.toISOString(),
-      end: end.toISOString(),
-      durationMin,
-      slotsLeft,
-      dayKey: day.toISOString().slice(0, 10),
-      teacher,
-      friendIds: chosen.map((f) => f.id),
-    };
-  };
-
-  const sessions: Session[] = [
-    S(0, 11, 30, "sensory play", 90, 3),
-    S(0, 11, 30, "movement & music", 90, 4),
-
-    S(1, 11, 30, "language", 90, 5),
-    S(1, 13, 30, "logic play", 90, 1),
-
-    S(2, 11, 30, "sensory play", 90, 5),
-    S(2, 13, 30, "movement & music", 90, 1),
-
-    S(3, 11, 30, "sensory play", 90, 5),
-    S(3, 13, 30, "movement & music", 90, 2),
-    S(3, 14, 30, "language", 90, 5),
-    S(3, 15, 0, "logic play", 90, 3),
-  ];
-
-  return { days, sessions };
-};
-
-function timeLabel(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-}
-
-function dayTitle(date: Date) {
-  const weekday = date.toLocaleDateString(undefined, { weekday: "short" });
-  const day = date.toLocaleDateString(undefined, { day: "2-digit" });
-  const mon = date.toLocaleDateString(undefined, { month: "short" });
-  return { chip: weekday.slice(0, 2), full: `${weekday}, ${day} ${mon}` };
-}
-
-function classNames(...xs: (string | false | undefined)[]) {
-  return xs.filter(Boolean).join(" ");
-}
+import { FRIENDS } from "./data";
 
 // --- Components ---
 const Pill: React.FC<{ active?: boolean; children: React.ReactNode; onClick?: () => void }> = ({ active, children, onClick }) => (
@@ -213,7 +92,7 @@ export default function MobilePlanner() {
       <header className="sticky top-0 z-40 bg-gradient-to-b from-[var(--brand)] to-[var(--brand)]/90 text-white">
         <div className="px-4 pt-6 pb-5">
           <div className="flex items-center gap-3">
-            <button aria-label="Go back" className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center">←</button>
+            <button aria-label="Go back" className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center" onClick={() => (window.location.hash = "#/")}>←</button>
             <div className="text-[15px]">
               <div className="opacity-90">plan</div>
               <div className="text-xl font-semibold">nikita’s schedule</div>
@@ -335,6 +214,29 @@ export default function MobilePlanner() {
                 selectedCount ? "bg-[var(--brand)] text-white" : "bg-gray-200 text-gray-500 cursor-not-allowed"
               )}
               aria-disabled={!selectedCount}
+              onClick={() => {
+                if (!selectedCount) return;
+                // Persist bookings and navigate home; Home will show upcoming tickets
+                const selectedIds = Object.entries(booked).filter(([, v]) => v).map(([id]) => id);
+                const selected = sessions.filter((s) => selectedIds.includes(s.id));
+                // Save to localStorage under 'bookings'
+                const existing = JSON.parse(localStorage.getItem("bookings") || "[]");
+                const now = new Date().toISOString();
+                const newOnes = selected.map((s) => ({
+                  id: `b:${s.id}`,
+                  sessionId: s.id,
+                  createdAt: now,
+                  attendedAt: null as string | null,
+                }));
+                // avoid duplicates by sessionId
+                const mergedBySessionId: Record<string, any> = {};
+                [...existing, ...newOnes].forEach((b: any) => {
+                  mergedBySessionId[b.sessionId] = mergedBySessionId[b.sessionId] || b;
+                });
+                const merged = Object.values(mergedBySessionId);
+                localStorage.setItem("bookings", JSON.stringify(merged));
+                window.location.hash = "#/";
+              }}
             >
               Continue
             </button>

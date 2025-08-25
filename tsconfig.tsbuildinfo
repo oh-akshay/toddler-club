@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/mobileplanner.tsx","./src/main.tsx"],"version":"5.9.2"}
+{"root":["./src/app.tsx","./src/home.tsx","./src/mobileplanner.tsx","./src/scan.tsx","./src/ticket.tsx","./src/data.ts","./src/main.tsx","./src/qr.tsx","./src/qrgen.ts"],"version":"5.9.2"}
