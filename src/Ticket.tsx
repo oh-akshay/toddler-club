@@ -30,7 +30,8 @@ export default function Ticket({ id }: { id: string }) {
     );
   }
 
-  const payload = `openhouse:booking:${booking.id}`;
+  const base = `${window.location.origin}${window.location.pathname}`;
+  const payload = `${base}#/scan?code=${encodeURIComponent(booking.id)}`;
 
   return (
     <div className="min-h-screen bg-neutral-50" style={{ ["--brand" as any]: BRAND } as React.CSSProperties}>
@@ -56,7 +57,7 @@ export default function Ticket({ id }: { id: string }) {
           <div className="h-px bg-gradient-to-r from-white via-gray-200 to-white" />
           <div className="p-5 flex flex-col items-center gap-3">
             <QR value={payload} size={220} />
-            <div className="text-[12px] text-gray-600 select-all">{payload}</div>
+            <div className="text-[12px] text-gray-600 select-all break-all">{payload}</div>
           </div>
           <div className="h-px bg-gradient-to-r from-white via-gray-200 to-white" />
           <div className="p-4 text-center text-[12px] text-gray-500">Show this at the entrance to mark attendance.</div>

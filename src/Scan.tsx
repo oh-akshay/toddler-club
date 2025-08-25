@@ -1,5 +1,6 @@
 import React from "react";
 import { BRAND, seedWeek } from "./data";
+import jsQR from "jsqr";
 
 type Booking = { id: string; sessionId: string; createdAt: string; attendedAt: string | null };
 
@@ -13,6 +14,21 @@ export default function Scan() {
     const picks = sessions.slice(0, 2);
     return picks.map((s, i) => ({ bookingId: `b:demo-${i + 1}`, sessionId: s.id }));
   }, [sessions]);
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+
+  // URL-scan fallback: if QR encodes a /scan?code=... URL, mark automatically
+  React.useEffect(() => {
+    const hash = window.location.hash;
+    const qIndex = hash.indexOf("?");
+    if (qIndex !== -1) {
+      const search = new URLSearchParams(hash.slice(qIndex + 1));
+      const code = search.get("code");
+      if (code) {
+        setLastCode(code);
+        markAttended(code);
+      }
+    }
+  }, []);
 
   React.useEffect(() => {
     // Feature detection
@@ -22,18 +38,19 @@ export default function Scan() {
   }, []);
 
   React.useEffect(() => {
-    if (supported === false) return;
     let stream: MediaStream | null = null;
     let raf = 0;
-    let detector: any = null;
     let running = true;
+    let usingDetector = supported === true;
+    let detector: any = null;
     (async () => {
       try {
-        // @ts-ignore
-        detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+        if (usingDetector) {
+          // @ts-ignore
+          detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+        }
       } catch (e) {
-        setSupported(false);
-        return;
+        usingDetector = false;
       }
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
@@ -44,14 +61,34 @@ export default function Scan() {
         const tick = async () => {
           if (!running) return;
           try {
-            if (videoRef.current && detector) {
-              const dets = await detector.detect(videoRef.current);
-              if (dets && dets.length) {
-                const raw = dets[0].rawValue as string;
-                setLastCode(raw);
-                if (raw.startsWith("openhouse:booking:")) {
-                  const id = raw.split(":").pop()!;
-                  markAttended(id);
+            if (videoRef.current) {
+              if (usingDetector && detector) {
+                const dets = await detector.detect(videoRef.current);
+                if (dets && dets.length) {
+                  const raw = dets[0].rawValue as string;
+                  handleDecoded(raw);
+                }
+              } else {
+                const v = videoRef.current;
+                const w = v.videoWidth;
+                const h = v.videoHeight;
+                if (w && h) {
+                  let canvas = canvasRef.current;
+                  if (!canvas) {
+                    canvas = document.createElement("canvas");
+                    canvasRef.current = canvas;
+                  }
+                  canvas.width = w;
+                  canvas.height = h;
+                  const ctx = canvas.getContext("2d");
+                  if (ctx) {
+                    ctx.drawImage(v, 0, 0, w, h);
+                    const img = ctx.getImageData(0, 0, w, h);
+                    const code = jsQR(img.data, w, h, { inversionAttempts: "attemptBoth" });
+                    if (code && code.data) {
+                      handleDecoded(code.data);
+                    }
+                  }
                 }
               }
             }
@@ -69,6 +106,21 @@ export default function Scan() {
       if (stream) stream.getTracks().forEach((t) => t.stop());
     };
   }, [supported]);
+
+  function handleDecoded(raw: string) {
+    setLastCode(raw);
+    // Accept both legacy scheme and URL with ?code=
+    if (raw.startsWith("openhouse:booking:")) {
+      const id = raw.split(":").pop()!;
+      markAttended(id);
+    } else {
+      try {
+        const url = new URL(raw);
+        const code = url.searchParams.get("code");
+        if (code) markAttended(code);
+      } catch {}
+    }
+  }
 
   function markAttended(bookingId: string) {
     const list: Booking[] = JSON.parse(localStorage.getItem("bookings") || "[]");
@@ -96,9 +148,9 @@ export default function Scan() {
       </header>
 
       <main className="px-4 pb-24">
-        {supported === false && (
+        {status === "camera_error" && (
           <div className="mt-8 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-            This browser doesn’t support in-page scanning. Use Chrome on Android, or mark attendance manually.
+            Camera error or insecure context. Use the demo buttons below or open via the device camera.
           </div>
         )}
 
